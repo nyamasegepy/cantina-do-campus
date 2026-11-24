@@ -4,7 +4,7 @@ Objeto de aprendizagem para o componente **Práticas Administrativas** do curso 
 
 É um jogo de simulação empresarial que opera como mini-ERP: as equipes gerenciam a cantina do campus ao longo de cinco rodadas, decidindo compras, preços, marketing e caixa, e observam as consequências de cada decisão. A regra central é que **nenhuma decisão pode ser submetida sem a análise que a fundamente** — uma planilha, uma consulta ao banco de dados ou um relatório extraído do próprio sistema. É assim que a Informática deixa de ser conteúdo a decorar e passa a ser instrumento de decisão.
 
-**Acesse:** https://SEU-USUARIO.github.io/cantina-do-campus/
+**Acesse:** https://nyamasegepy.github.io/cantina-do-campus/
 <!-- Depois de publicar, troque SEU-USUARIO pelo seu nome de usuário do GitHub,
      aqui e no arquivo CITATION.cff. -->
 
