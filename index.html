@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cantina do Campus — Simulação</title>
+<meta name="description" content="Jogo de simulação empresarial que opera como mini-ERP, para o componente Práticas Administrativas do curso Técnico em Administração.">
+<meta name="author" content="Newton Nyamasege Marube">
+<meta name="theme-color" content="#123A26">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cantina">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="icon" href="icone-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<style>
+:root{--g:#1F6B3B;--d:#123A26;--m:#6FA287;--ml:#E6EFE7;--ink:#20302A;--gy:#6A7A70;--bd:#D8E0DA;--warn:#B3261E;--amb:#8A6D00}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:#F6F8F6}
+header{background:var(--d);color:#fff;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+header h1{font-size:16px;margin:0;flex:1;min-width:180px}
+.badge{background:rgba(255,255,255,.15);padding:4px 9px;border-radius:20px;font-size:12px}
+nav{display:flex;flex-wrap:wrap;gap:4px;background:#fff;padding:8px;border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:5}
+nav button{border:1px solid var(--bd);background:#fff;color:var(--ink);padding:7px 12px;border-radius:18px;font-size:13px;cursor:pointer}
+nav button.on{background:var(--g);color:#fff;border-color:var(--g)}
+main{padding:12px;max-width:980px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 8px;color:var(--g)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.kpi{background:var(--d);color:#fff;border-radius:10px;padding:10px;text-align:center}
+.kpi b{display:block;font-size:20px}
+.kpi span{font-size:11px;color:#CFE0D4}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid var(--bd);padding:6px 8px;text-align:left}
+th{background:var(--g);color:#fff;font-weight:600}
+td.n,th.n{text-align:right}
+input,select,textarea{font:inherit;padding:6px;border:1px solid var(--bd);border-radius:6px;width:100%;background:#fff}
+textarea{min-height:80px}
+label{font-size:12px;color:var(--gy);display:block;margin:6px 0 2px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+button.act{background:var(--g);color:#fff;border:none;padding:9px 14px;border-radius:8px;cursor:pointer;font-size:14px}
+button.act.sec{background:#fff;color:var(--g);border:1px solid var(--g)}
+button.act:disabled{background:#B9C6BD;cursor:not-allowed}
+.msg{padding:8px 10px;border-radius:8px;font-size:13px;margin:8px 0}
+.ok{background:var(--ml);color:var(--g)}.bad{background:#FCE4E4;color:var(--warn)}.warn{background:#FFF4D6;color:var(--amb)}
+.hint{font-size:12px;color:var(--gy)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Cantina do Campus — Simulação empresarial</h1>
+  <span class="badge" id="bTeam">—</span>
+  <span class="badge" id="bRole">—</span>
+  <span class="badge" id="bRound">Rodada 1</span>
+  <span class="badge" id="bCash">R$ 0</span>
+</header>
+<nav id="nav"></nav>
+<main id="main"></main>
+<script>
+/* ================= CENÁRIO: CANTINA DO CAMPUS ================= */
+const CEN = {
+  nome:"Cantina do Campus",
+  rodadas:5,
+  caixaInicial:3000,
+  custosFixos:400,          // por rodada
+  elasticidade:1.2,
+  kMarketing:0.20,
+  mktReferencia:200,
+  sazonalidade:[1.00,1.15,0.85,1.10,1.00],   // rodada 2 = semana de provas
+  produtos:[
+    {id:"SAL", nome:"Salgado assado", precoRef:8.00, custoBase:4.00, demandaBase:90, perecivel:true,  estoqueIni:120},
+    {id:"BEB", nome:"Bebida",         precoRef:6.00, custoBase:3.00, demandaBase:70, perecivel:false, estoqueIni:100},
+    {id:"DOC", nome:"Doce / barra",   precoRef:5.00, custoBase:2.50, demandaBase:50, perecivel:false, estoqueIni:80}
+  ],
+  fornecedores:[
+    {id:"DIST", nome:"Distribuidora regional", mult:1.00, prazo:2, loteMin:100},
+    {id:"PAD",  nome:"Padaria local",          mult:1.25, prazo:1, loteMin:20}
+  ]
+};
+const PROF_SENHA = "prof2026";
+
+/* ================= ESTADO ================= */
+const K="cantina_mvp_v1";
+let S=null;
+function novoEstado(){
+  const est={},prc={};
+  CEN.produtos.forEach(p=>{est[p.id]=p.estoqueIni;prc[p.id]=p.precoRef;});
+  return {equipe:"",papel:"",rodada:1,caixa:CEN.caixaInicial,estoque:est,precos:prc,
+    marketing:CEN.mktReferencia,pedidos:[],historico:[],lancamentos:[],log:[],
+    analise:"",debriefing:[],finalizado:false};
+}
+function salvar(){localStorage.setItem(K,JSON.stringify(S));}
+function carregar(){const r=localStorage.getItem(K);S=r?JSON.parse(r):novoEstado();}
+
+/* ================= LOG DE USO (instrumentação da pesquisa) ================= */
+function log(acao,aba,detalhe){
+  S.log.push({ts:new Date().toISOString(),rodada:S.rodada,papel:S.papel||"-",acao:acao,aba:aba||"-",detalhe:detalhe||""});
+  if(S.log.length>4000)S.log.shift();
+  salvar();
+}
+
+/* ================= UTILIDADES ================= */
+const money=v=>"R$ "+(Math.round(v*100)/100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const prod=id=>CEN.produtos.find(p=>p.id===id);
+const forn=id=>CEN.fornecedores.find(f=>f.id===id);
+const custoUnit=(pid,fid)=>prod(pid).custoBase*forn(fid).mult;
+function emTransito(pid){return S.pedidos.filter(o=>o.produto===pid&&o.chegaEm>S.rodada).reduce((a,b)=>a+b.qtd,0);}
+
+/* ================= MOTOR DE SIMULAÇÃO ================= */
+function calcDemanda(pid,preco,mkt,rodada){
+  const p=prod(pid);
+  const efPreco=Math.pow(p.precoRef/Math.max(preco,0.01),CEN.elasticidade);
+  const efMkt=1+CEN.kMarketing*(mkt/CEN.mktReferencia);
+  const saz=CEN.sazonalidade[rodada-1]!==undefined?CEN.sazonalidade[rodada-1]:1;
+  return Math.max(0,Math.round(p.demandaBase*efPreco*efMkt*saz));
+}
+function processarRodada(){
+  const r=S.rodada, linha={rodada:r,itens:[],marketing:S.marketing,receita:0,custoCompras:0,perdas:0,perdaValor:0};
+  // 1) recebimentos
+  S.pedidos.filter(o=>o.chegaEm===r&&!o.recebido).forEach(o=>{
+    S.estoque[o.produto]+=o.qtd;o.recebido=true;
+    S.lancamentos.push({rodada:r,tipo:"Recebimento",desc:o.qtd+" un "+prod(o.produto).nome+" ("+forn(o.fornecedor).nome+")",valor:0});
+  });
+  // 2) demanda, vendas, ruptura
+  CEN.produtos.forEach(p=>{
+    const dem=calcDemanda(p.id,S.precos[p.id],S.marketing,r);
+    const disp=S.estoque[p.id];
+    const vend=Math.min(dem,disp);
+    const rup=dem-vend;
+    const rec=vend*S.precos[p.id];
+    S.estoque[p.id]=disp-vend;
+    let perda=0,perdaV=0;
+    if(p.perecivel&&S.estoque[p.id]>0){perda=S.estoque[p.id];perdaV=perda*p.custoBase;S.estoque[p.id]=0;}
+    linha.itens.push({produto:p.id,preco:S.precos[p.id],demanda:dem,disponivel:disp,vendas:vend,ruptura:rup,receita:rec,perda:perda});
+    linha.receita+=rec;linha.perdas+=perda;linha.perdaValor+=perdaV;
+    if(rec>0)S.lancamentos.push({rodada:r,tipo:"Venda",desc:vend+" un "+p.nome,valor:rec});
+    if(perda>0)S.lancamentos.push({rodada:r,tipo:"Perda",desc:perda+" un "+p.nome+" (validade) — custo ja pago na compra: "+money(perdaV),valor:0});
+  });
+  // 3) custos
+  const compras=S.pedidos.filter(o=>o.rodadaPedido===r).reduce((a,b)=>a+b.total,0);
+  linha.custoCompras=compras;
+  S.lancamentos.push({rodada:r,tipo:"Marketing",desc:"Investimento da rodada",valor:-S.marketing});
+  S.lancamentos.push({rodada:r,tipo:"Custos fixos",desc:"Aluguel, energia, pessoal",valor:-CEN.custosFixos});
+  linha.custosFixos=CEN.custosFixos;
+  linha.lucro=linha.receita-compras-S.marketing-CEN.custosFixos;
+  S.caixa+=linha.lucro;
+  linha.caixaFinal=S.caixa;
+  linha.analise=S.analise;
+  S.historico.push(linha);
+  log("processar_rodada","rodada","lucro="+linha.lucro.toFixed(2));
+  S.rodada++;S.analise="";
+  if(S.rodada>CEN.rodadas)S.finalizado=true;
+  salvar();
+  return linha;
+}
+/* ================= PAPÉIS E ABAS ================= */
+const PAPEIS={
+ "Compras e Estoque":["painel","compras","estoque","relatorios","rodada","debriefing"],
+ "Vendas e Marketing":["painel","vendas","relatorios","rodada","debriefing"],
+ "Financeiro":["painel","financeiro","relatorios","rodada","debriefing"],
+ "Coordenação (vê tudo)":["painel","compras","estoque","vendas","financeiro","relatorios","rodada","debriefing"],
+ "Professor":["painel","professor","relatorios"]
+};
+const ABAS={painel:"Painel",compras:"Compras",estoque:"Estoque",vendas:"Vendas",financeiro:"Financeiro",
+ relatorios:"Relatórios",rodada:"Rodada",debriefing:"Debriefing",professor:"Console"};
+let abaAtual="painel";
+
+/* ================= CSV ================= */
+function baixar(nome,txt){
+  const b=new Blob(["﻿"+txt],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=nome;a.click();
+  log("exportar_csv","relatorios",nome);
+}
+function csv(linhas){return linhas.map(l=>l.map(c=>{
+  const s=String(c==null?"":c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(";")).join("\n");}
+function csvEstoque(){
+  const L=[["produto","nome","saldo","em_transito","preco_atual","perecivel"]];
+  CEN.produtos.forEach(p=>L.push([p.id,p.nome,S.estoque[p.id],emTransito(p.id),S.precos[p.id],p.perecivel?"sim":"nao"]));
+  baixar("estoque_rodada"+S.rodada+".csv",csv(L));
+}
+function csvHistorico(){
+  const L=[["rodada","produto","preco","demanda","disponivel","vendas","ruptura","receita","perda_un"]];
+  S.historico.forEach(h=>h.itens.forEach(i=>L.push([h.rodada,i.produto,i.preco,i.demanda,i.disponivel,i.vendas,i.ruptura,i.receita.toFixed(2),i.perda])));
+  const R=[["rodada","receita","custo_compras","marketing","custos_fixos","perda_valor","lucro","caixa_final"]];
+  S.historico.forEach(h=>R.push([h.rodada,h.receita.toFixed(2),h.custoCompras.toFixed(2),h.marketing,h.custosFixos,h.perdaValor.toFixed(2),h.lucro.toFixed(2),h.caixaFinal.toFixed(2)]));
+  baixar("historico_equipe.csv",csv(L)+"\n\n"+csv(R));
+}
+function csvLancamentos(){
+  const L=[["rodada","tipo","descricao","valor"]];
+  S.lancamentos.forEach(l=>L.push([l.rodada,l.tipo,l.desc,l.valor.toFixed(2)]));
+  baixar("financeiro_equipe.csv",csv(L));
+}
+function csvLog(){
+  const L=[["timestamp","rodada","papel","acao","aba","detalhe"]];
+  S.log.forEach(l=>L.push([l.ts,l.rodada,l.papel,l.acao,l.aba,l.detalhe]));
+  baixar("log_uso_"+(S.equipe||"equipe")+".csv",csv(L));
+}
+
+/* ================= RENDER ================= */
+function el(h){const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild;}
+function topo(){
+  document.getElementById("bTeam").textContent=S.equipe||"sem equipe";
+  document.getElementById("bRole").textContent=S.papel||"sem papel";
+  document.getElementById("bRound").textContent=S.finalizado?"Encerrado":("Rodada "+S.rodada+"/"+CEN.rodadas);
+  document.getElementById("bCash").textContent=money(S.caixa);
+}
+function navRender(){
+  const n=document.getElementById("nav");n.innerHTML="";
+  const abas=PAPEIS[S.papel]||["painel"];
+  abas.forEach(a=>{
+    const b=document.createElement("button");b.textContent=ABAS[a];
+    if(a===abaAtual)b.className="on";
+    b.onclick=()=>{abaAtual=a;log("abrir_aba",a);render();};
+    n.appendChild(b);
+  });
+}
+function render(){
+  carregarSeVazio();topo();navRender();
+  const m=document.getElementById("main");m.innerHTML="";
+  if(!S.equipe||!S.papel){m.appendChild(telaSetup());return;}
+  const abas=PAPEIS[S.papel]||[];
+  if(!abas.includes(abaAtual))abaAtual=abas[0];
+  m.appendChild(({painel:telaPainel,compras:telaCompras,estoque:telaEstoque,vendas:telaVendas,
+    financeiro:telaFinanceiro,relatorios:telaRelatorios,rodada:telaRodada,debriefing:telaDebriefing,
+    professor:telaProfessor})[abaAtual]());
+}
+function carregarSeVazio(){if(!S)carregar();}
+/* ---------- SETUP ---------- */
+function telaSetup(){
+  const d=el('<div class="card"><h2>Identificação</h2></div>');
+  d.innerHTML+='<p class="hint">Sem cadastro e sem dados pessoais: use apenas o nome da equipe combinado com a turma.</p>'+
+   '<label>Nome da equipe</label><input id="iEq" placeholder="Ex.: Equipe 1">'+
+   '<label>Seu papel</label><select id="iPa">'+Object.keys(PAPEIS).map(p=>'<option>'+p+'</option>').join("")+'</select>'+
+   '<p></p><button class="act" id="bOk">Entrar</button>';
+  setTimeout(()=>{document.getElementById("bOk").onclick=()=>{
+    const e=document.getElementById("iEq").value.trim(),p=document.getElementById("iPa").value;
+    if(!e){alert("Informe o nome da equipe.");return;}
+    if(p==="Professor"&&prompt("Senha do professor:")!==PROF_SENHA){alert("Senha incorreta.");return;}
+    S.equipe=e;S.papel=p;abaAtual=(PAPEIS[p]||["painel"])[0];log("entrar","setup",p);salvar();render();};},0);
+  return d;
+}
+/* ---------- PAINEL ---------- */
+function telaPainel(){
+  const d=document.createElement("div");
+  const ult=S.historico[S.historico.length-1];
+  d.appendChild(el('<div class="card"><h2>Situação atual</h2><div class="kpis">'+
+   '<div class="kpi"><b>'+money(S.caixa)+'</b><span>Caixa</span></div>'+
+   '<div class="kpi"><b>'+(S.finalizado?"—":S.rodada)+'</b><span>Rodada</span></div>'+
+   CEN.produtos.map(p=>'<div class="kpi"><b>'+S.estoque[p.id]+'</b><span>'+p.nome+'</span></div>').join("")+
+   '</div></div>'));
+  if(ult){
+    d.appendChild(el('<div class="card"><h2>Resultado da rodada '+ult.rodada+'</h2>'+
+     '<table><tr><th>Produto</th><th class="n">Preço</th><th class="n">Demanda</th><th class="n">Vendas</th><th class="n">Ruptura</th><th class="n">Perda</th></tr>'+
+     ult.itens.map(i=>'<tr><td>'+prod(i.produto).nome+'</td><td class="n">'+money(i.preco)+'</td><td class="n">'+i.demanda+'</td><td class="n">'+i.vendas+'</td><td class="n">'+(i.ruptura>0?'<b style="color:#B3261E">'+i.ruptura+'</b>':0)+'</td><td class="n">'+(i.perda>0?'<b style="color:#8A6D00">'+i.perda+'</b>':0)+'</td></tr>').join("")+
+     '</table><p class="hint">Receita '+money(ult.receita)+' · Compras '+money(ult.custoCompras)+' · Marketing '+money(ult.marketing)+
+     ' · Fixos '+money(ult.custosFixos)+' · Perdas '+money(ult.perdaValor)+' · <b>Lucro '+money(ult.lucro)+'</b></p></div>'));
+  } else {
+    d.appendChild(el('<div class="card"><p class="msg warn">Primeira rodada. Consulte o seu módulo, exporte os dados, monte a análise e submeta a decisão na aba <b>Rodada</b>.</p></div>'));
+  }
+  d.appendChild(el('<div class="card"><h2>Atenção</h2><p class="hint">O <b>salgado assado</b> tem validade de uma rodada: o que sobrar é perdido. A <b>distribuidora</b> entrega em 2 rodadas (lote mínimo 100) e a <b>padaria</b> em 1 rodada (lote mínimo 20), porém mais cara. Planeje a compra pensando na rodada seguinte.</p></div>'));
+  return d;
+}
+/* ---------- COMPRAS ---------- */
+function telaCompras(){
+  const d=document.createElement("div");
+  const c=el('<div class="card"><h2>Nova compra</h2></div>');
+  c.innerHTML+='<div class="row">'+
+   '<div><label>Produto</label><select id="cP">'+CEN.produtos.map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join("")+'</select></div>'+
+   '<div><label>Fornecedor</label><select id="cF">'+CEN.fornecedores.map(f=>'<option value="'+f.id+'">'+f.nome+' (prazo '+f.prazo+', lote '+f.loteMin+')</option>').join("")+'</select></div>'+
+   '<div><label>Quantidade</label><input id="cQ" type="number" min="0" step="1" value="0"></div></div>'+
+   '<p id="cInfo" class="hint"></p><button class="act" id="cB">Registrar pedido</button>';
+  d.appendChild(c);
+  const t=el('<div class="card"><h2>Pedidos</h2></div>');
+  t.innerHTML+= S.pedidos.length? '<table><tr><th>Rodada</th><th>Produto</th><th>Fornecedor</th><th class="n">Qtd</th><th class="n">Total</th><th>Chega em</th><th>Status</th></tr>'+
+    S.pedidos.map(o=>'<tr><td>'+o.rodadaPedido+'</td><td>'+prod(o.produto).nome+'</td><td>'+forn(o.fornecedor).nome+'</td><td class="n">'+o.qtd+'</td><td class="n">'+money(o.total)+'</td><td>'+o.chegaEm+'</td><td>'+(o.recebido?"recebido":"em trânsito")+'</td></tr>').join("")+'</table>'
+    :'<p class="hint">Nenhum pedido registrado.</p>';
+  d.appendChild(t);
+  setTimeout(()=>{
+    const upd=()=>{const p=document.getElementById("cP").value,f=document.getElementById("cF").value,q=+document.getElementById("cQ").value||0;
+      document.getElementById("cInfo").textContent="Custo unitário "+money(custoUnit(p,f))+" · Total "+money(custoUnit(p,f)*q)+" · Chega na rodada "+(S.rodada+forn(f).prazo);};
+    ["cP","cF","cQ"].forEach(i=>document.getElementById(i).addEventListener("input",upd));upd();
+    document.getElementById("cB").onclick=()=>{
+      const p=document.getElementById("cP").value,f=document.getElementById("cF").value,q=+document.getElementById("cQ").value||0;
+      if(q<=0){alert("Informe a quantidade.");return;}
+      if(q<forn(f).loteMin){alert("Abaixo do lote mínimo do fornecedor ("+forn(f).loteMin+" unidades).");return;}
+      const total=custoUnit(p,f)*q;
+      const comprometido=S.pedidos.filter(o=>o.rodadaPedido===S.rodada).reduce((a,b)=>a+b.total,0);
+      if(total+comprometido>S.caixa){alert("Caixa insuficiente para esta rodada.\nDisponível: "+money(S.caixa)+"\nJá comprometido: "+money(comprometido));return;}
+      S.pedidos.push({produto:p,fornecedor:f,qtd:q,total:total,rodadaPedido:S.rodada,chegaEm:S.rodada+forn(f).prazo,recebido:false});
+      S.lancamentos.push({rodada:S.rodada,tipo:"Compra",desc:q+" un "+prod(p).nome+" ("+forn(f).nome+") — pago no fechamento da rodada",valor:-total});
+      log("registrar_compra","compras",p+"/"+f+"/"+q);salvar();render();};
+  },0);
+  return d;
+}
+/* ---------- ESTOQUE ---------- */
+function telaEstoque(){
+  const d=el('<div class="card"><h2>Posição de estoque</h2></div>');
+  d.innerHTML+='<table><tr><th>Produto</th><th class="n">Saldo</th><th class="n">Em trânsito</th><th>Validade</th></tr>'+
+   CEN.produtos.map(p=>'<tr><td>'+p.nome+'</td><td class="n">'+S.estoque[p.id]+'</td><td class="n">'+emTransito(p.id)+'</td><td>'+(p.perecivel?"1 rodada":"não perece")+'</td></tr>').join("")+
+   '</table><p class="hint">Saldo é o disponível para vender agora. Em trânsito só chega na rodada indicada em Compras.</p>';
+  return d;
+}
+/* ---------- VENDAS ---------- */
+function telaVendas(){
+  const d=el('<div class="card"><h2>Preço e marketing da rodada '+S.rodada+'</h2></div>');
+  d.innerHTML+='<div class="row">'+CEN.produtos.map(p=>'<div><label>'+p.nome+' (ref. '+money(p.precoRef)+')</label><input class="vP" data-id="'+p.id+'" type="number" step="0.10" min="0.10" value="'+S.precos[p.id]+'"></div>').join("")+
+   '<div><label>Investimento em marketing (ref. '+money(CEN.mktReferencia)+')</label><input id="vM" type="number" step="10" min="0" value="'+S.marketing+'"></div></div>'+
+   '<p></p><button class="act" id="vB">Salvar</button><p class="hint">Preço acima da referência reduz a procura; abaixo, aumenta. O marketing amplia a procura de todos os produtos. O sistema não calcula o preço ideal: essa é a sua análise.</p>';
+  setTimeout(()=>{document.getElementById("vB").onclick=()=>{
+    document.querySelectorAll(".vP").forEach(i=>{const v=parseFloat(i.value);if(v>0)S.precos[i.dataset.id]=v;});
+    S.marketing=Math.max(0,+document.getElementById("vM").value||0);
+    log("salvar_precos","vendas",JSON.stringify(S.precos)+"/mkt="+S.marketing);salvar();render();
+    alert("Preços e marketing salvos.");};},0);
+  return d;
+}
+/* ---------- FINANCEIRO ---------- */
+function telaFinanceiro(){
+  const d=document.createElement("div");
+  d.appendChild(el('<div class="card"><h2>Caixa</h2><div class="kpis"><div class="kpi"><b>'+money(S.caixa)+'</b><span>Disponível</span></div>'+
+    '<div class="kpi"><b>'+money(CEN.custosFixos)+'</b><span>Custo fixo / rodada</span></div>'+
+    '<div class="kpi"><b>'+money(S.marketing)+'</b><span>Marketing da rodada</span></div></div></div>'));
+  const t=el('<div class="card"><h2>Extrato</h2></div>');
+  t.innerHTML+= S.lancamentos.length? '<table><tr><th>Rodada</th><th>Tipo</th><th>Descrição</th><th class="n">Valor</th></tr>'+
+    S.lancamentos.slice().reverse().map(l=>'<tr><td>'+l.rodada+'</td><td>'+l.tipo+'</td><td>'+l.desc+'</td><td class="n" style="color:'+(l.valor<0?"#B3261E":"#1F6B3B")+'">'+money(l.valor)+'</td></tr>').join("")+'</table>'
+    :'<p class="hint">Sem lançamentos.</p>';
+  d.appendChild(t);
+  return d;
+}
+/* ---------- RELATÓRIOS ---------- */
+function telaRelatorios(){
+  const d=document.createElement("div");
+  const c=el('<div class="card"><h2>Exportar dados</h2></div>');
+  c.innerHTML+='<p class="hint">Exporte para montar a sua análise em planilha ou banco de dados. É a análise que fundamenta a decisão da rodada.</p>'+
+   '<p><button class="act sec" id="e1">Estoque</button> <button class="act sec" id="e2">Histórico de rodadas</button> '+
+   '<button class="act sec" id="e3">Financeiro</button> <button class="act sec" id="e4">Registro de uso</button></p>';
+  d.appendChild(c);
+  const h=el('<div class="card"><h2>Histórico</h2></div>');
+  h.innerHTML+= S.historico.length? '<table><tr><th>Rodada</th><th class="n">Receita</th><th class="n">Compras</th><th class="n">Perdas</th><th class="n">Lucro</th><th class="n">Caixa</th></tr>'+
+    S.historico.map(x=>'<tr><td>'+x.rodada+'</td><td class="n">'+money(x.receita)+'</td><td class="n">'+money(x.custoCompras)+'</td><td class="n">'+money(x.perdaValor)+'</td><td class="n"><b>'+money(x.lucro)+'</b></td><td class="n">'+money(x.caixaFinal)+'</td></tr>').join("")+'</table>'
+    :'<p class="hint">Nenhuma rodada processada.</p>';
+  d.appendChild(h);
+  setTimeout(()=>{document.getElementById("e1").onclick=csvEstoque;document.getElementById("e2").onclick=csvHistorico;
+    document.getElementById("e3").onclick=csvLancamentos;document.getElementById("e4").onclick=csvLog;},0);
+  return d;
+}
+/* ---------- RODADA ---------- */
+function telaRodada(){
+  const d=document.createElement("div");
+  if(S.finalizado){d.appendChild(el('<div class="card"><p class="msg ok">Simulação encerrada. Exporte os dados em Relatórios e registre o Debriefing.</p></div>'));return d;}
+  const r=el('<div class="card"><h2>Submeter decisão da rodada '+S.rodada+'</h2></div>');
+  r.innerHTML+='<table><tr><th>Produto</th><th class="n">Preço</th><th class="n">Estoque</th><th class="n">Em trânsito</th></tr>'+
+   CEN.produtos.map(p=>'<tr><td>'+p.nome+'</td><td class="n">'+money(S.precos[p.id])+'</td><td class="n">'+S.estoque[p.id]+'</td><td class="n">'+emTransito(p.id)+'</td></tr>').join("")+
+   '</table><p class="hint">Marketing: '+money(S.marketing)+' · Caixa: '+money(S.caixa)+'</p>'+
+   '<label>Análise que fundamenta a decisão (obrigatória)</label>'+
+   '<textarea id="rA" placeholder="Que dados vocês consultaram? Qual a projeção de demanda? Por que este preço e esta compra?">'+(S.analise||"")+'</textarea>'+
+   '<p></p><button class="act" id="rB">Processar rodada</button>'+
+   '<p class="hint">Ao processar, a rodada é fechada e os resultados são calculados. Não é possível desfazer.</p>';
+  d.appendChild(r);
+  setTimeout(()=>{
+    document.getElementById("rA").addEventListener("input",e=>{S.analise=e.target.value;salvar();});
+    document.getElementById("rB").onclick=()=>{
+      const a=(document.getElementById("rA").value||"").trim();
+      if(a.length<40){alert("Descreva a análise que fundamenta a decisão (mínimo 40 caracteres).");log("bloqueio_sem_analise","rodada");return;}
+      if(!confirm("Processar a rodada "+S.rodada+"? Não será possível desfazer."))return;
+      S.analise=a;const l=processarRodada();render();
+      alert("Rodada processada.\nReceita: "+money(l.receita)+"\nLucro: "+money(l.lucro)+"\nCaixa: "+money(l.caixaFinal));};
+  },0);
+  return d;
+}
+/* ---------- DEBRIEFING ---------- */
+function telaDebriefing(){
+  const d=el('<div class="card"><h2>Debriefing</h2></div>');
+  const Q=["O que decidimos nesta rodada?","Com base em qual dado decidimos?","Qual foi o resultado, comparado ao esperado?","O que faremos diferente na próxima rodada?"];
+  const reg=S.debriefing.find(x=>x.rodada===S.rodada-1);
+  d.innerHTML+='<p class="hint">Registro referente à rodada '+Math.max(1,S.rodada-1)+'.</p>'+
+   Q.map((q,i)=>'<label>'+q+'</label><textarea class="dbQ" data-i="'+i+'">'+(reg?reg.resp[i]||"":"")+'</textarea>').join("")+
+   '<p></p><button class="act" id="dB">Salvar debriefing</button>';
+  setTimeout(()=>{document.getElementById("dB").onclick=()=>{
+    const resp=[...document.querySelectorAll(".dbQ")].map(t=>t.value);
+    const rd=Math.max(1,S.rodada-1);
+    S.debriefing=S.debriefing.filter(x=>x.rodada!==rd);
+    S.debriefing.push({rodada:rd,resp:resp});
+    log("salvar_debriefing","debriefing","rodada="+rd);salvar();alert("Debriefing salvo.");};},0);
+  return d;
+}
+/* ---------- CONSOLE DO PROFESSOR ---------- */
+function telaProfessor(){
+  const d=document.createElement("div");
+  const c=el('<div class="card"><h2>Console do professor</h2></div>');
+  c.innerHTML+='<p class="hint">Esta instalação guarda apenas a equipe deste dispositivo. Consolide as turmas reunindo os arquivos exportados por cada equipe.</p>'+
+   '<div class="kpis"><div class="kpi"><b>'+(S.equipe||"—")+'</b><span>Equipe</span></div>'+
+   '<div class="kpi"><b>'+S.historico.length+'</b><span>Rodadas concluídas</span></div>'+
+   '<div class="kpi"><b>'+S.log.length+'</b><span>Eventos no log</span></div>'+
+   '<div class="kpi"><b>'+money(S.caixa)+'</b><span>Caixa</span></div></div>'+
+   '<p></p><button class="act sec" id="pJ">Exportar tudo (JSON)</button> '+
+   '<button class="act sec" id="pI">Importar equipe (JSON)</button> '+
+   '<button class="act sec" id="pR">Reiniciar simulação</button>'+
+   '<input type="file" id="pF" accept="application/json" class="hide">';
+  d.appendChild(c);
+  const a=el('<div class="card"><h2>Análises registradas por rodada</h2></div>');
+  a.innerHTML+= S.historico.length? S.historico.map(h=>'<p><b>Rodada '+h.rodada+':</b> '+(h.analise?h.analise:"<i>sem registro</i>")+'</p>').join("")
+    :'<p class="hint">Nenhuma rodada processada.</p>';
+  d.appendChild(a);
+  setTimeout(()=>{
+    document.getElementById("pJ").onclick=()=>{
+      const b=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});
+      const x=document.createElement("a");x.href=URL.createObjectURL(b);x.download="equipe_"+(S.equipe||"sem_nome")+".json";x.click();log("exportar_json","professor");};
+    document.getElementById("pI").onclick=()=>document.getElementById("pF").click();
+    document.getElementById("pF").onchange=e=>{const f=e.target.files[0];if(!f)return;
+      const r=new FileReader();r.onload=()=>{try{S=JSON.parse(r.result);salvar();render();alert("Equipe importada.");}catch(err){alert("Arquivo inválido.");}};r.readAsText(f);};
+    document.getElementById("pR").onclick=()=>{if(confirm("Apagar todos os dados desta equipe neste dispositivo?")){
+      const p=S.papel;S=novoEstado();S.papel=p;salvar();render();}};
+  },0);
+  return d;
+}
+/* ================= INÍCIO ================= */
+carregar();
+if(!S.equipe){S=novoEstado();salvar();}
+render();
+window.addEventListener("beforeunload",salvar);
+</script>
+
+<script>
+/* Registro do service worker. Falha em silêncio quando o objeto é aberto
+   direto do arquivo (file://), caso em que o jogo roda igual, apenas sem
+   instalação nem cache offline. */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>

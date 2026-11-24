@@ -1,0 +1,35 @@
+{
+  "name": "Cantina do Campus — Simulação",
+  "short_name": "Cantina",
+  "description": "Jogo de simulação empresarial que opera como mini-ERP, para o componente Práticas Administrativas do curso Técnico em Administração.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "/cantina-do-campus/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6F8F6",
+  "theme_color": "#123A26",
+  "categories": ["education", "business"],
+  "icons": [
+    {
+      "src": "icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icone-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

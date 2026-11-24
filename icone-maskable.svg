@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#123A26"/>
+  <g transform="translate(51.2,51.2) scale(0.8)">
+  <!-- toldo da cantina: faixas e borda ondulada -->
+  <g>
+    <path d="M96 150 h320 v60 H96 Z" fill="#9FD3B4"/>
+    <path d="M136 150 h40 v60 h-40 Z M216 150 h40 v60 h-40 Z M296 150 h40 v60 h-40 Z" fill="#CFE9DA"/>
+    <path d="M96 210 q20 26 40 0 q20 26 40 0 q20 26 40 0 q20 26 40 0 q20 26 40 0 q20 26 40 0 q20 26 40 0 q20 26 40 0 v-6 H96 Z" fill="#9FD3B4"/>
+  </g>
+  <!-- barras de desempenho sobre o balcão -->
+  <g fill="#F6C445">
+    <rect x="156" y="314" width="44" height="76" rx="10"/>
+    <rect x="234" y="276" width="44" height="114" rx="10"/>
+    <rect x="312" y="238" width="44" height="152" rx="10"/>
+  </g>
+  <!-- balcão -->
+  <rect x="120" y="396" width="272" height="26" rx="13" fill="#9FD3B4"/>
+</g>
+</svg>

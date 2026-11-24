@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "Cantina do Campus — Simulação"
+message: "Se você usar ou adaptar este objeto de aprendizagem, cite-o como abaixo."
+type: software
+abstract: >-
+  Objeto de aprendizagem em formato de jogo de simulação empresarial que
+  opera como mini-ERP, desenvolvido para o componente Práticas
+  Administrativas do curso Técnico em Administração concomitante ao Ensino
+  Médio. As equipes gerenciam a cantina do campus ao longo de cinco
+  rodadas e só podem submeter uma decisão acompanhada da análise que a
+  fundamenta, produzida em planilha, banco de dados ou relatório extraído
+  do próprio sistema.
+authors:
+  - family-names: "Marube"
+    given-names: "Newton Nyamasege"
+    affiliation: "Instituto Federal de Educação, Ciência e Tecnologia do Rio Grande do Sul — Campus Erechim"
+version: "1.0"
+date-released: "2026-11-24"
+license: CC-BY-SA-4.0
+url: "https://SEU-USUARIO.github.io/cantina-do-campus/"
+repository-code: "https://github.com/SEU-USUARIO/cantina-do-campus"
+keywords:
+  - objeto de aprendizagem
+  - recurso educacional aberto
+  - simulação empresarial
+  - educação profissional técnica de nível médio
+  - ensino de Informática
+  - Metodologia Intera
