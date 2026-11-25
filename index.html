@@ -107,6 +107,23 @@ button.act:disabled{background:var(--bd);color:#3A4A41;cursor:not-allowed}
 .trilha b{display:block;font-weight:inherit}
 .trilha small{display:block;font-weight:400;font-size:11.5px;color:var(--gy);margin-top:1px}
 
+/* ---- Primeiro uso ---- */
+.lead{font-size:15px;line-height:1.55;margin:0 0 10px;max-width:62ch}
+.regra{background:#FFF9E8;border:1px solid #F0DFAE;border-radius:8px;padding:10px 12px;
+       font-size:13.5px;line-height:1.55;color:var(--ink)}
+.papel{margin-top:10px;padding:10px 12px;background:var(--ml);border-radius:8px;font-size:13px;line-height:1.5}
+.papel b{display:block;color:var(--d);margin-bottom:3px}
+.papel span{display:block;color:var(--ink)}
+.papel small{display:block;margin-top:5px;color:var(--gy);font-size:11.5px}
+.guia-card .regra{margin:10px 0}
+ol.guia{margin:12px 0 10px;padding-left:20px}
+ol.guia li{font-size:13.5px;line-height:1.6;margin:0 0 7px}
+ol.guia li::marker{color:var(--g);font-weight:700}
+.guia-dlg{max-width:560px;max-height:82vh;overflow-y:auto}
+button.ajuda{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45);
+             padding:5px 11px;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit}
+button.ajuda:hover{background:rgba(255,255,255,.14)}
+
 /* ---- Progresso das rodadas, no cabeçalho ---- */
 .prog{display:flex;gap:3px;align-items:center}
 .prog i{width:16px;height:5px;border-radius:3px;background:rgba(255,255,255,.28)}
@@ -171,7 +188,7 @@ function novoEstado(){
   CEN.produtos.forEach(p=>{est[p.id]=p.estoqueIni;prc[p.id]=p.precoRef;});
   return {equipe:"",papel:"",rodada:1,caixa:CEN.caixaInicial,estoque:est,precos:prc,
     marketing:CEN.mktReferencia,pedidos:[],historico:[],lancamentos:[],log:[],
-    analise:"",debriefing:[],finalizado:false};
+    analise:"",debriefing:[],finalizado:false,guiaLido:false};
 }
 function salvar(){localStorage.setItem(K,JSON.stringify(S));}
 function carregar(){const r=localStorage.getItem(K);S=r?JSON.parse(r):novoEstado();}
@@ -338,6 +355,14 @@ function topo(){
     Array.from({length:CEN.rodadas},(_,i)=>'<i class="'+(i<feitas?"f":(i===feitas&&!S.finalizado?"a":""))+'"></i>').join("")+
     '</span> <span>'+(S.finalizado?"Encerrado":("Rodada "+S.rodada+"/"+CEN.rodadas))+'</span>';
   bR.style.display="flex";bR.style.alignItems="center";bR.style.gap="7px";
+  if(S.equipe&&!document.getElementById("bGuia")){
+    const b=document.createElement("button");
+    b.id="bGuia";b.className="ajuda";b.type="button";
+    b.textContent="Como funciona";
+    b.title="Reabrir o guia da atividade";
+    b.onclick=abrirGuia;
+    document.querySelector("header").appendChild(b);
+  }
   document.getElementById("bCash").textContent=money(S.caixa);
 }
 function navRender(){
@@ -363,16 +388,31 @@ function render(){
 function carregarSeVazio(){if(!S)carregar();}
 /* ---------- SETUP ---------- */
 function telaSetup(){
-  const d=el('<div class="card"><h2>Identificação</h2></div>');
-  d.innerHTML+='<p class="hint">Sem cadastro e sem dados pessoais: use apenas o nome da equipe combinado com a turma.</p>'+
-   '<label>Nome da equipe</label><input id="iEq" placeholder="Ex.: Equipe 1">'+
-   '<label>Seu papel</label><select id="iPa">'+Object.keys(PAPEIS).map(p=>'<option>'+p+'</option>').join("")+'</select>'+
+  const d=document.createElement("div");
+  d.appendChild(el('<div class="card"><h2>Cantina do Campus</h2>'+
+   '<p class="lead">Vocês assumem a administração da cantina por '+CEN.rodadas+' rodadas. '+
+   'Cada equipe compra, define preço, investe em marketing e acompanha o caixa — '+
+   'e, a cada rodada, descobre o que as suas decisões provocaram.</p>'+
+   '<div class="regra"><b>Nenhuma decisão entra sem a análise que a sustenta.</b> '+
+   'É a análise que será avaliada, não o lucro do jogo.</div></div>'));
+  const f=el('<div class="card"><h2>Entrar</h2></div>');
+  f.innerHTML+='<p class="hint">Sem cadastro e sem dados pessoais: use apenas o nome da equipe combinado com a turma.</p>'+
+   '<label for="iEq">Nome da equipe</label><input id="iEq" placeholder="Ex.: Equipe 1">'+
+   '<label for="iPa">Seu papel na equipe</label><select id="iPa">'+Object.keys(PAPEIS).map(p=>'<option>'+p+'</option>').join("")+'</select>'+
+   '<div id="descPapel" class="papel" aria-live="polite"></div>'+
    '<p></p><button class="act" id="bOk">Entrar</button>';
-  setTimeout(()=>{document.getElementById("bOk").onclick=()=>{
+  d.appendChild(f);
+  setTimeout(()=>{
+    const sel=document.getElementById("iPa"),cx=document.getElementById("descPapel");
+    const pinta=()=>{const k=DESC_PAPEL[sel.value];if(!k){cx.innerHTML="";return;}
+      cx.innerHTML='<b>'+k.o+'</b><span>'+k.q+'</span><small>Seus módulos: '+k.a+'</small>';};
+    sel.onchange=pinta;pinta();
+    document.getElementById("bOk").onclick=()=>{
     const e=document.getElementById("iEq").value.trim(),p=document.getElementById("iPa").value;
     if(!e){avisar("Falta o nome da equipe","Use o nome combinado com a turma. Sem ele as decisões não podem ser atribuídas à equipe.");return;}
     if(p==="Professor"&&prompt("Senha do professor:")!==PROF_SENHA){avisar("Senha incorreta","O console do professor exige a senha combinada.");return;}
-    S.equipe=e;S.papel=p;abaAtual=(PAPEIS[p]||["painel"])[0];log("entrar","setup",p);salvar();render();};},0);
+    S.equipe=e;S.papel=p;abaAtual=(PAPEIS[p]||["painel"])[0];log("entrar","setup",p);salvar();render();};
+  },0);
   return d;
 }
 /* ---------- PAINEL ---------- */
@@ -393,8 +433,15 @@ function telaPainel(){
      '</table><p class="hint">Receita '+money(ult.receita)+' · Compras '+money(ult.custoCompras)+' · Marketing '+money(ult.marketing)+
      ' · Fixos '+money(ult.custosFixos)+' · Perdas '+money(ult.perdaValor)+' · <b>Lucro '+money(ult.lucro)+'</b></p>'+
      porqueDaRodada(ult)+'</div>'));
+  } else if(!S.guiaLido){
+    const g=el('<div class="card guia-card">'+guiaHTML()+
+      '<p></p><button class="act" id="gFechar">Entendi, começar</button></div>');
+    d.appendChild(g);
+    setTimeout(()=>{const b=document.getElementById("gFechar");
+      if(b)b.onclick=()=>{S.guiaLido=true;log("fechar_guia","painel");salvar();render();};},0);
   } else {
-    d.appendChild(el('<div class="card"><p class="msg warn">Primeira rodada. Consulte o seu módulo, exporte os dados, monte a análise e submeta a decisão na aba <b>Rodada</b>.</p></div>'));
+    d.appendChild(el('<div class="card"><p class="msg warn">Primeira rodada. Consulte o seu módulo, '+
+     'exporte os dados, monte a análise e submeta a decisão na aba <b>Rodada</b>.</p></div>'));
   }
   if(!S.finalizado){
     const nomeSaz=["semana comum","semana de provas","semana comum","evento no campus","fim de semestre"];
@@ -529,6 +576,59 @@ function telaRodada(){
       if(alvo){alvo.setAttribute("tabindex","-1");alvo.focus();alvo.scrollIntoView({block:"start"});}};
   },0);
   return d;
+}
+/* ---------- PRIMEIRO USO ----------
+   O estudante chega sem contexto. Em vez de um tour modal — que
+   interrompe, é pulado e não volta —, o contexto aparece onde a dúvida
+   nasce: o papel se explica na hora em que é escolhido, e o guia fica
+   no painel da primeira rodada, dispensável e rechamável a qualquer
+   momento pelo botão do cabeçalho. */
+const DESC_PAPEL={
+ "Compras e Estoque":{o:"Você abastece a cantina.",
+   q:"Decide de qual fornecedor comprar, quanto e quando. Cuidado com o prazo de entrega e com o lote mínimo: o que você pedir hoje chega daqui a uma ou duas rodadas.",
+   a:"Compras · Estoque"},
+ "Vendas e Marketing":{o:"Você define quanto custa e quanto aparece.",
+   q:"Decide o preço de cada produto e o investimento em marketing. Preço alto aumenta a margem e afasta cliente; preço baixo faz o contrário.",
+   a:"Vendas"},
+ "Financeiro":{o:"Você cuida do caixa.",
+   q:"Acompanha entradas, saídas e o que já está comprometido. Sem caixa não há compra, por melhor que seja a oportunidade.",
+   a:"Financeiro"},
+ "Coordenação (vê tudo)":{o:"Você enxerga a operação inteira.",
+   q:"Vê todos os módulos e ajuda a equipe a fechar a decisão da rodada. É quem normalmente redige a análise que fundamenta a decisão.",
+   a:"Todos os módulos"},
+ "Professor":{o:"Console de condução da atividade.",
+   q:"Acompanhamento das equipes, exportação dos dados e reinício. Exige senha.",
+   a:"Console · Relatórios"}
+};
+function guiaHTML(){
+  return '<h2>Como funciona</h2>'+
+  '<p>Vocês administram a cantina do campus por <b>'+CEN.rodadas+' rodadas</b>. '+
+  'Cada rodada é uma semana de operação: a equipe decide, o sistema processa e mostra o que aconteceu.</p>'+
+  '<div class="regra"><b>A regra que vale mais que o lucro.</b> Nenhuma decisão pode ser enviada sem a '+
+  'análise que a sustenta. É essa análise que será avaliada — não a posição da equipe no jogo. '+
+  'Uma equipe pode lucrar por sorte; o que conta é conseguir explicar por quê.</div>'+
+  '<ol class="guia">'+
+  '<li><b>Consultar os dados.</b> Em <i>Relatórios</i> você exporta estoque, histórico e financeiro. '+
+  'O sistema entrega dados, nunca a resposta.</li>'+
+  '<li><b>Montar a análise.</b> Fora daqui, na planilha ou no banco de dados: projete a demanda, calcule margem, '+
+  'veja o que faltou ou sobrou na rodada anterior.</li>'+
+  '<li><b>Decidir.</b> Cada papel decide a sua parte; a equipe fecha junto.</li>'+
+  '<li><b>Ler o resultado.</b> Depois de processar, o painel mostra o que aconteceu com cada produto '+
+  '<b>e por quê</b> — quanto o seu preço mexeu na procura, quanto o marketing trouxe, o que a semana influenciou.</li>'+
+  '</ol>'+
+  '<p class="hint">Os dados ficam só neste computador, neste navegador. Use sempre a mesma máquina e '+
+  'exporte o arquivo da equipe ao fim de cada aula.</p>';
+}
+function abrirGuia(){
+  const o=document.createElement("div");o.className="ovl";
+  o.innerHTML='<div class="dlg guia-dlg" role="dialog" aria-modal="true" aria-labelledby="gT">'+
+    guiaHTML().replace("<h2>","<h2 id=\"gT\">")+
+    '<div class="bt"><button class="act" id="gOk">Fechar</button></div></div>';
+  document.body.appendChild(o);
+  const b=o.querySelector("#gOk");b.focus();
+  const fim=()=>o.remove();
+  b.onclick=fim;o.onkeydown=e=>{if(e.key==="Escape")fim();};
+  log("abrir_guia","ajuda");
 }
 /* ---------- TRILHA DA RODADA ----------
    O fluxo pretendido — consultar os dados, montar a análise, decidir,
