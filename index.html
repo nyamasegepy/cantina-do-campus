@@ -15,25 +15,37 @@
 <link rel="icon" href="icone-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icone-192.png">
 <style>
-:root{--g:#1F6B3B;--d:#123A26;--m:#6FA287;--ml:#E6EFE7;--ink:#20302A;--gy:#6A7A70;--bd:#D8E0DA;--warn:#B3261E;--amb:#8A6D00}
+:root{--g:#1F6B3B;--d:#123A26;--m:#6FA287;--ml:#E6EFE7;--ink:#20302A;
+      --gy:#5A6B61;          /* 5.30:1 no fundo e 4.81:1 no verde claro — antes 6A7A70 reprovava */
+      --bd:#D8E0DA;--warn:#B3261E;
+      --amb:#806500;         /* 5.07:1 sobre o amarelo de aviso — antes 8A6D00 ficava em 4.49 */
+      --foco:#8A6D00}
 *{box-sizing:border-box}
 
 /* Foco visível por teclado (WCAG 2.4.7). Sem isto, quem navega por Tab
    não enxerga onde está. :focus-visible não marca o clique de mouse. */
-:focus{outline:3px solid #8A6D00;outline-offset:2px}
-:focus:not(:focus-visible){outline:none}
-:focus-visible{outline:3px solid #8A6D00;outline-offset:2px;border-radius:3px}
+:focus{outline:none}
+:focus-visible{outline:3px solid var(--foco);outline-offset:2px;border-radius:4px;
+               box-shadow:0 0 0 5px rgba(255,255,255,.95)}
+/* O anel duplo é proposital: o âmbar sozinho tem contraste de 2,6:1 contra o
+   verde-escuro do cabeçalho. O halo branco garante a visibilidade nos dois fundos. */
 
 .gl{font-weight:400;font-size:.78em;color:var(--gy)}
 
 /* Por que a demanda foi essa */
-.pq{margin:6px 0 2px;border-left:3px solid var(--m);background:var(--ml);padding:7px 10px;border-radius:0 6px 6px 0}
-.pq h3{margin:0 0 4px;font-size:13px;color:var(--d)}
-.pq ul{margin:0;padding-left:16px}
-.pq li{font-size:12.5px;line-height:1.5;margin:1px 0}
-.pq .sobe{color:#1F6B3B;font-weight:600}
+.pqs{margin-top:18px;padding-top:14px;border-top:1px solid var(--bd)}
+.pqs>h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gy);margin:0 0 10px}
+.pq{margin:0 0 16px}
+.pq:last-child{margin-bottom:0}
+.pq h4{margin:0 0 5px;font-size:14px;color:var(--d);font-weight:600}
+.pq ul{margin:0;padding:0;list-style:none}
+.pq li{font-size:13px;line-height:1.55;margin:0;display:flex;gap:8px;justify-content:space-between;
+       padding:2px 0;border-bottom:1px solid rgba(216,224,218,.6)}
+.pq li>span:first-child{color:var(--ink)}
+.pq li>span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.pq .sobe{color:var(--g);font-weight:600}
 .pq .desce{color:var(--warn);font-weight:600}
-.pq .tot{font-size:12.5px;margin:4px 0 0;padding-top:4px;border-top:1px dashed var(--bd)}
+.pq .tot{font-size:13px;line-height:1.55;margin:7px 0 0;color:var(--ink)}
 
 /* Diálogo na própria página, no lugar de alert() e confirm() */
 .ovl{position:fixed;inset:0;background:rgba(18,58,38,.45);display:flex;
@@ -72,6 +84,50 @@ button.act:disabled{background:#B9C6BD;cursor:not-allowed}
 .ok{background:var(--ml);color:var(--g)}.bad{background:#FCE4E4;color:var(--warn)}.warn{background:#FFF4D6;color:var(--amb)}
 .hint{font-size:12px;color:var(--gy)}
 .hide{display:none}
+
+/* Números em colunas: alinham verticalmente e param de "dançar" entre rodadas. */
+td.n,th.n,.kpi b,.pq li>span:last-child{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* Botão desabilitado: texto escuro sobre superfície clara.
+   Branco sobre cinza-claro dava 1,8:1 e era ilegível. */
+button.act:disabled{background:var(--bd);color:#3A4A41;cursor:not-allowed}
+
+/* ---- Trilha da rodada: o fluxo consultar > analisar > decidir > ler ---- */
+.trilha{display:flex;flex-wrap:wrap;gap:0;margin:0 0 12px;padding:0;list-style:none;
+        background:#fff;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.trilha li{flex:1 1 150px;min-width:0;padding:9px 12px;font-size:12.5px;line-height:1.35;
+           border-right:1px solid var(--bd);display:flex;gap:8px;align-items:flex-start;color:var(--gy)}
+.trilha li:last-child{border-right:none}
+.trilha .num{flex:0 0 20px;height:20px;border-radius:50%;background:var(--bd);color:#3A4A41;
+             font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.trilha .feito{background:var(--ml);color:var(--ink)}
+.trilha .feito .num{background:var(--g);color:#fff}
+.trilha .agora{background:#FFF9E8;color:var(--ink);font-weight:600}
+.trilha .agora .num{background:var(--amb);color:#fff}
+.trilha b{display:block;font-weight:inherit}
+.trilha small{display:block;font-weight:400;font-size:11.5px;color:var(--gy);margin-top:1px}
+
+/* ---- Progresso das rodadas, no cabeçalho ---- */
+.prog{display:flex;gap:3px;align-items:center}
+.prog i{width:16px;height:5px;border-radius:3px;background:rgba(255,255,255,.28)}
+.prog i.f{background:#9FD3B4}
+.prog i.a{background:#F6C445}
+
+@media(max-width:640px){
+  /* Tabelas largas rolam na horizontal em vez de espremer a coluna. */
+  .card table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Alvo de toque confortável (WCAG 2.5.8 pede 24px; 44px é o conforto real). */
+  nav button{min-height:44px;padding:10px 14px;font-size:14px}
+  button.act{min-height:44px}
+  input,select{min-height:44px}
+  .trilha li{flex:1 1 100%;border-right:none;border-bottom:1px solid var(--bd)}
+  .trilha li:last-child{border-bottom:none}
+  header h1{font-size:15px}
+}
+@media(prefers-reduced-motion:no-preference){
+  .ovl{animation:ent .16s ease-out}
+  @keyframes ent{from{opacity:0}to{opacity:1}}
+}
 </style>
 </head>
 <body>
@@ -276,7 +332,12 @@ function el(h){const d=document.createElement("div");d.innerHTML=h;return d.firs
 function topo(){
   document.getElementById("bTeam").textContent=S.equipe||"sem equipe";
   document.getElementById("bRole").textContent=S.papel||"sem papel";
-  document.getElementById("bRound").textContent=S.finalizado?"Encerrado":("Rodada "+S.rodada+"/"+CEN.rodadas);
+  const feitas=S.historico.length;
+  const bR=document.getElementById("bRound");
+  bR.innerHTML='<span class="prog" aria-hidden="true">'+
+    Array.from({length:CEN.rodadas},(_,i)=>'<i class="'+(i<feitas?"f":(i===feitas&&!S.finalizado?"a":""))+'"></i>').join("")+
+    '</span> <span>'+(S.finalizado?"Encerrado":("Rodada "+S.rodada+"/"+CEN.rodadas))+'</span>';
+  bR.style.display="flex";bR.style.alignItems="center";bR.style.gap="7px";
   document.getElementById("bCash").textContent=money(S.caixa);
 }
 function navRender(){
@@ -318,6 +379,7 @@ function telaSetup(){
 function telaPainel(){
   const d=document.createElement("div");
   const ult=S.historico[S.historico.length-1];
+  if(!S.finalizado) d.appendChild(el(trilha()));
   d.appendChild(el('<div class="card"><h2>Situação atual</h2><div class="kpis">'+
    '<div class="kpi"><b>'+money(S.caixa)+'</b><span>Caixa</span></div>'+
    '<div class="kpi"><b>'+(S.finalizado?"—":S.rodada)+'</b><span>Rodada</span></div>'+
@@ -334,7 +396,19 @@ function telaPainel(){
   } else {
     d.appendChild(el('<div class="card"><p class="msg warn">Primeira rodada. Consulte o seu módulo, exporte os dados, monte a análise e submeta a decisão na aba <b>Rodada</b>.</p></div>'));
   }
-  d.appendChild(el('<div class="card"><h2>Atenção</h2><p class="hint">O <b>salgado assado</b> tem validade de uma rodada: o que sobrar é perdido. A <b>distribuidora</b> entrega em 2 rodadas (lote mínimo 100) e a <b>padaria</b> em 1 rodada (lote mínimo 20), porém mais cara. Planeje a compra pensando na rodada seguinte.</p></div>'));
+  if(!S.finalizado){
+    const nomeSaz=["semana comum","semana de provas","semana comum","evento no campus","fim de semestre"];
+    const saz=CEN.sazonalidade[S.rodada-1];
+    let aviso='';
+    if(saz>1.02) aviso='<p class="msg warn"><b>Rodada '+S.rodada+' — '+nomeSaz[S.rodada-1]+'.</b> '+
+      'A procura tende a subir cerca de '+Math.round((saz-1)*100)+'%. Estoque curto hoje vira ruptura amanhã.</p>';
+    else if(saz<0.98) aviso='<p class="msg warn"><b>Rodada '+S.rodada+' — '+nomeSaz[S.rodada-1]+'.</b> '+
+      'A procura tende a cair cerca de '+Math.round((1-saz)*100)+'%. Comprar demais hoje vira perda por validade.</p>';
+    d.appendChild(el('<div class="card"><h2>O que pesa nesta rodada</h2>'+aviso+
+     '<p class="hint">O <b>salgado assado</b> vence em uma rodada: o que sobrar é perdido. '+
+     'A <b>distribuidora</b> entrega em 2 rodadas (lote mínimo 100); a <b>padaria</b> entrega em 1 rodada '+
+     '(lote mínimo 20), porém mais cara. Quem compra hoje está decidindo para depois de amanhã.</p></div>'));
+  }
   return d;
 }
 /* ---------- COMPRAS ---------- */
@@ -424,6 +498,7 @@ function telaRelatorios(){
 function telaRodada(){
   const d=document.createElement("div");
   if(S.finalizado){d.appendChild(el('<div class="card"><p class="msg ok">Simulação encerrada. Exporte os dados em Relatórios e registre o Debriefing.</p></div>'));return d;}
+  d.appendChild(el(trilha()));
   const r=el('<div class="card"><h2>Submeter decisão da rodada '+S.rodada+'</h2></div>');
   r.innerHTML+='<table><tr><th>Produto</th><th class="n">Preço</th><th class="n">Estoque</th><th class="n">Em trânsito</th></tr>'+
    CEN.produtos.map(p=>'<tr><td>'+p.nome+'</td><td class="n">'+money(S.precos[p.id])+'</td><td class="n">'+S.estoque[p.id]+'</td><td class="n">'+emTransito(p.id)+'</td></tr>').join("")+
@@ -454,6 +529,111 @@ function telaRodada(){
       if(alvo){alvo.setAttribute("tabindex","-1");alvo.focus();alvo.scrollIntoView({block:"start"});}};
   },0);
   return d;
+}
+/* ---------- TRILHA DA RODADA ----------
+   O fluxo pretendido — consultar os dados, montar a análise, decidir,
+   ler o resultado — estava implícito na ordem das abas. Aqui ele vira
+   visível, e cada passo é marcado a partir do que a equipe de fato fez
+   nesta rodada, lido do próprio registro de uso. Não é enfeite: é a
+   regra pedagógica do objeto (nenhuma decisão sem análise) exposta na
+   interface. */
+function passosDaRodada(){
+  const r=S.rodada;
+  const ev=(S.log||[]).filter(e=>e.rodada===r);
+  const consultou=ev.some(e=>(e.acao==="abrir_aba"&&e.aba==="relatorios")||e.acao==="exportar_csv");
+  const analisou=(S.analise||"").trim().length>=40;
+  const decidiu=ev.some(e=>e.acao==="salvar_precos"||e.acao==="registrar_compra");
+  const leu=S.historico.length>0;
+  return [
+   {t:"Consultar os dados", d:"Relatórios, estoque e histórico", ok:consultou},
+   {t:"Montar a análise",   d:"Em planilha ou banco, fora daqui", ok:analisou},
+   {t:"Decidir",            d:"Preço, marketing e compras",      ok:decidiu},
+   {t:"Ler o resultado",    d:"Painel, depois de processar",     ok:leu}
+  ];
+}
+function trilha(){
+  const ps=passosDaRodada();
+  const iAgora=ps.findIndex(x=>!x.ok);
+  return '<ol class="trilha" aria-label="Etapas da rodada '+S.rodada+'">'+
+    ps.map((x,i)=>{
+      const cls = x.ok ? "feito" : (i===iAgora ? "agora" : "");
+      const est = x.ok ? "concluído" : (i===iAgora ? "etapa atual" : "ainda não iniciado");
+      return '<li class="'+cls+'"><span class="num" aria-hidden="true">'+(x.ok?"&#10003;":(i+1))+'</span>'+
+             '<span><b>'+x.t+'</b><small>'+x.d+'</small>'+
+             '<span class="hide">'+est+'</span></span></li>';
+    }).join("")+'</ol>';
+}
+/* ---------- POR QUE DEU ISSO: atribui cada resultado à decisão ----------
+   O motor calcula a demanda como base x efeito do preço x efeito do
+   marketing x sazonalidade. Expor essa decomposição é o que separa um
+   retorno igual para todas as equipes de um retorno que varia conforme
+   a decisão tomada — e permite ao estudante corrigir sozinho na rodada
+   seguinte, sem depender do professor para interpretar o número. */
+function efeitoTxt(mult,base){
+  const un=Math.round(base*mult)-Math.round(base);
+  if(Math.abs(mult-1)<0.005) return '<span class="gl">sem efeito</span>';
+  const cls=mult>1?"sobe":"desce", sin=un>0?"+":"";
+  return '<span class="'+cls+'">'+sin+un+' un</span> <span class="gl">(x'+mult.toFixed(2)+')</span>';
+}
+function porqueDaRodada(l){
+  const nomeSaz=["semana comum","semana de provas","semana comum","evento no campus","fim de semestre"];
+  const corpo = l.itens.map(i=>{
+    const f=i.fat; if(!f) return "";
+    const p=prod(i.produto);
+    const dPreco=i.preco-p.precoRef;
+    const rotPreco = Math.abs(dPreco)<0.005
+      ? 'Seu preço de '+money(i.preco)+', igual à referência'
+      : 'Seu preço de '+money(i.preco)+', '+(dPreco>0?'acima':'abaixo')+' da referência de '+money(p.precoRef);
+    let fecho=[];
+    if(i.ruptura>0) fecho.push('<b>Faltou produto.</b> '+i.ruptura+' unidades não foram vendidas por falta de estoque, '+
+       'o que deixou <b>'+money(i.rupturaValor||0)+'</b> de receita na mesa.');
+    if(i.perda>0) fecho.push('<b>Sobrou produto perecível.</b> '+i.perda+' unidades venceram, e o custo de <b>'+
+       money(i.perdaValor||0)+'</b> já tinha sido pago na compra.');
+    if(i.ruptura===0&&i.perda===0) fecho.push('<b>Estoque bem dimensionado:</b> sem falta e sem perda por validade.');
+    const linha=(a,b)=>'<li><span>'+a+'</span><span>'+b+'</span></li>';
+    return '<div class="pq"><h4>'+p.nome+' — por que a demanda foi '+i.demanda+'?</h4><ul>'+
+      linha('Ponto de partida do produto','<b>'+f.base+' un</b>')+
+      linha(rotPreco, efeitoTxt(f.efPreco,f.base))+
+      linha('Marketing de '+money(l.marketing), efeitoTxt(f.efMkt,f.base*f.efPreco))+
+      linha('Rodada '+l.rodada+', '+(nomeSaz[l.rodada-1]||"semana comum"), efeitoTxt(f.saz,f.base*f.efPreco*f.efMkt))+
+      linha('<b>Demanda da rodada</b>','<b>'+i.demanda+' un</b>')+
+      '</ul><p class="tot">Tinha <b>'+i.disponivel+'</b> em estoque e vendeu <b>'+i.vendas+'</b>. '+
+      fecho.join(" ")+'</p></div>';
+  }).join("");
+  return '<div class="pqs"><h3>Por que deu isso</h3>'+corpo+'</div>';
+}
+/* ---------- TRILHA DA RODADA ----------
+   O fluxo pretendido — consultar os dados, montar a análise, decidir,
+   ler o resultado — estava implícito na ordem das abas. Aqui ele vira
+   visível, e cada passo é marcado a partir do que a equipe de fato fez
+   nesta rodada, lido do próprio registro de uso. Não é enfeite: é a
+   regra pedagógica do objeto (nenhuma decisão sem análise) exposta na
+   interface. */
+function passosDaRodada(){
+  const r=S.rodada;
+  const ev=(S.log||[]).filter(e=>e.rodada===r);
+  const consultou=ev.some(e=>(e.acao==="abrir_aba"&&e.aba==="relatorios")||e.acao==="exportar_csv");
+  const analisou=(S.analise||"").trim().length>=40;
+  const decidiu=ev.some(e=>e.acao==="salvar_precos"||e.acao==="registrar_compra");
+  const leu=S.historico.length>0;
+  return [
+   {t:"Consultar os dados", d:"Relatórios, estoque e histórico", ok:consultou},
+   {t:"Montar a análise",   d:"Em planilha ou banco, fora daqui", ok:analisou},
+   {t:"Decidir",            d:"Preço, marketing e compras",      ok:decidiu},
+   {t:"Ler o resultado",    d:"Painel, depois de processar",     ok:leu}
+  ];
+}
+function trilha(){
+  const ps=passosDaRodada();
+  const iAgora=ps.findIndex(x=>!x.ok);
+  return '<ol class="trilha" aria-label="Etapas da rodada '+S.rodada+'">'+
+    ps.map((x,i)=>{
+      const cls = x.ok ? "feito" : (i===iAgora ? "agora" : "");
+      const est = x.ok ? "concluído" : (i===iAgora ? "etapa atual" : "ainda não iniciado");
+      return '<li class="'+cls+'"><span class="num" aria-hidden="true">'+(x.ok?"&#10003;":(i+1))+'</span>'+
+             '<span><b>'+x.t+'</b><small>'+x.d+'</small>'+
+             '<span class="hide">'+est+'</span></span></li>';
+    }).join("")+'</ol>';
 }
 /* ---------- POR QUE DEU ISSO: atribui cada resultado à decisão ----------
    O motor calcula a demanda como base x efeito do preço x efeito do

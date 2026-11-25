@@ -10,7 +10,7 @@
  * antiga do index.html, e os estudantes jogam o que você já corrigiu.
  */
 
-const CACHE = 'cantina-v2';
+const CACHE = 'cantina-v3';
 
 const ARQUIVOS = [
   './',
