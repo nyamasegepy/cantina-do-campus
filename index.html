@@ -643,12 +643,14 @@ function passosDaRodada(){
   const consultou=ev.some(e=>(e.acao==="abrir_aba"&&e.aba==="relatorios")||e.acao==="exportar_csv");
   const analisou=(S.analise||"").trim().length>=40;
   const decidiu=ev.some(e=>e.acao==="salvar_precos"||e.acao==="registrar_compra");
-  const leu=S.historico.length>0;
   return [
    {t:"Consultar os dados", d:"Relatórios, estoque e histórico", ok:consultou},
    {t:"Montar a análise",   d:"Em planilha ou banco, fora daqui", ok:analisou},
    {t:"Decidir",            d:"Preço, marketing e compras",      ok:decidiu},
-   {t:"Ler o resultado",    d:"Painel, depois de processar",     ok:leu}
+   /* Nunca concluído dentro da própria rodada: é o que acontece ao processar.
+      Marcá-lo por causa de rodadas anteriores punha um visto no fim da
+      sequência enquanto o começo seguia pendente. */
+   {t:"Processar e ler",    d:"O painel explica o que cada decisão causou", ok:false}
   ];
 }
 function trilha(){
@@ -701,75 +703,6 @@ function porqueDaRodada(l){
       fecho.join(" ")+'</p></div>';
   }).join("");
   return '<div class="pqs"><h3>Por que deu isso</h3>'+corpo+'</div>';
-}
-/* ---------- TRILHA DA RODADA ----------
-   O fluxo pretendido — consultar os dados, montar a análise, decidir,
-   ler o resultado — estava implícito na ordem das abas. Aqui ele vira
-   visível, e cada passo é marcado a partir do que a equipe de fato fez
-   nesta rodada, lido do próprio registro de uso. Não é enfeite: é a
-   regra pedagógica do objeto (nenhuma decisão sem análise) exposta na
-   interface. */
-function passosDaRodada(){
-  const r=S.rodada;
-  const ev=(S.log||[]).filter(e=>e.rodada===r);
-  const consultou=ev.some(e=>(e.acao==="abrir_aba"&&e.aba==="relatorios")||e.acao==="exportar_csv");
-  const analisou=(S.analise||"").trim().length>=40;
-  const decidiu=ev.some(e=>e.acao==="salvar_precos"||e.acao==="registrar_compra");
-  const leu=S.historico.length>0;
-  return [
-   {t:"Consultar os dados", d:"Relatórios, estoque e histórico", ok:consultou},
-   {t:"Montar a análise",   d:"Em planilha ou banco, fora daqui", ok:analisou},
-   {t:"Decidir",            d:"Preço, marketing e compras",      ok:decidiu},
-   {t:"Ler o resultado",    d:"Painel, depois de processar",     ok:leu}
-  ];
-}
-function trilha(){
-  const ps=passosDaRodada();
-  const iAgora=ps.findIndex(x=>!x.ok);
-  return '<ol class="trilha" aria-label="Etapas da rodada '+S.rodada+'">'+
-    ps.map((x,i)=>{
-      const cls = x.ok ? "feito" : (i===iAgora ? "agora" : "");
-      const est = x.ok ? "concluído" : (i===iAgora ? "etapa atual" : "ainda não iniciado");
-      return '<li class="'+cls+'"><span class="num" aria-hidden="true">'+(x.ok?"&#10003;":(i+1))+'</span>'+
-             '<span><b>'+x.t+'</b><small>'+x.d+'</small>'+
-             '<span class="hide">'+est+'</span></span></li>';
-    }).join("")+'</ol>';
-}
-/* ---------- POR QUE DEU ISSO: atribui cada resultado à decisão ----------
-   O motor calcula a demanda como base x efeito do preço x efeito do
-   marketing x sazonalidade. Expor essa decomposição é o que separa um
-   retorno igual para todas as equipes de um retorno que varia conforme
-   a decisão tomada — e permite ao estudante corrigir sozinho na rodada
-   seguinte, sem depender do professor para interpretar o número. */
-function efeitoTxt(mult,base){
-  const un=Math.round(base*mult)-Math.round(base);
-  if(Math.abs(mult-1)<0.005) return '<span class="gl">sem efeito</span>';
-  const cls=mult>1?"sobe":"desce", sin=un>0?"+":"";
-  return '<span class="'+cls+'">x'+mult.toFixed(2)+'</span> <span class="gl">('+sin+un+' un)</span>';
-}
-function porqueDaRodada(l){
-  const nomeSaz=["semana comum","semana de provas","semana comum","evento no campus","fim de semestre"];
-  return l.itens.map(i=>{
-    const f=i.fat; if(!f) return "";
-    const p=prod(i.produto);
-    const dPreco=i.preco-p.precoRef;
-    const txtPreco = Math.abs(dPreco)<0.005
-      ? 'preço igual ao de referência ('+money(p.precoRef)+')'
-      : 'preço '+money(i.preco)+', '+(dPreco>0?'acima':'abaixo')+' da referência de '+money(p.precoRef);
-    let frases=[];
-    if(i.ruptura>0) frases.push('Faltou produto: <b>'+i.ruptura+' unidades</b> não foram vendidas por falta de estoque, '+
-       'o que deixou <b>'+money(i.rupturaValor||0)+'</b> de receita na mesa.');
-    if(i.perda>0) frases.push('Sobrou produto perecível: <b>'+i.perda+' unidades</b> venceram, '+
-       'e o custo de <b>'+money(i.perdaValor||0)+'</b> já tinha sido pago na compra.');
-    if(i.ruptura===0&&i.perda===0) frases.push('Estoque bem dimensionado: sem falta e sem perda por validade.');
-    return '<div class="pq"><h3>'+p.nome+' — por que a demanda foi '+i.demanda+'?</h3><ul>'+
-      '<li>Ponto de partida do produto: <b>'+f.base+' un</b></li>'+
-      '<li>Seu '+txtPreco+': '+efeitoTxt(f.efPreco,f.base)+'</li>'+
-      '<li>Marketing de '+money(l.marketing)+': '+efeitoTxt(f.efMkt,f.base*f.efPreco)+'</li>'+
-      '<li>Rodada '+l.rodada+' ('+(nomeSaz[l.rodada-1]||"semana comum")+'): '+efeitoTxt(f.saz,f.base*f.efPreco*f.efMkt)+'</li>'+
-      '</ul><p class="tot">Demanda <b>'+i.demanda+'</b> · tinha em estoque <b>'+i.disponivel+'</b> · '+
-      'vendeu <b>'+i.vendas+'</b>. '+frases.join(" ")+'</p></div>';
-  }).join("");
 }
 /* ---------- DEBRIEFING ---------- */
 function telaDebriefing(){
